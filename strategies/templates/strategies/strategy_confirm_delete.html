@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-lg mx-auto mt-20 card animate-fade-in">
+  <h2 class="text-2xl font-bold text-red-700 mb-4">Delete Strategy</h2>
+  <p class="mb-6">Are you sure you want to delete the strategy <strong>{{ object.get_name_display }}</strong>?</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="flex space-x-4">
+      <button type="submit" class="btn-primary bg-red-600 hover:bg-red-700 flex-1">
+        <i class="fas fa-trash mr-2"></i>Delete
+      </button>
+      <a href="{% url 'strategy-list' %}" class="btn-secondary flex-1 text-center">
+        <i class="fas fa-times mr-2"></i>Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %} 

@@ -1,0 +1,573 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- CSRF Token for AJAX requests -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<div class="max-w-6xl mx-auto mt-10 animate-fade-in">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div>
+      <h2 class="text-3xl font-bold text-finanslab-700 mb-2 animate-slide-up">
+        <i class="fas fa-chart-bar mr-3"></i>Backtest Details
+      </h2>
+      <p class="text-gray-600 animate-slide-up" style="animation-delay: 0.2s;">
+        Detailed analysis of your backtest run
+      </p>
+    </div>
+    <div class="flex space-x-2">
+      <a href="{% url 'download-report' run.id %}" class="btn-primary">
+        <i class="fas fa-download mr-2"></i>Download Report
+      </a>
+      <a href="{% url 'backtest-dashboard' %}" class="btn-secondary">
+        <i class="fas fa-arrow-left mr-2"></i>Back to History
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Performance Overview -->
+      <div class="card animate-slide-up" style="animation-delay: 0.3s;">
+        <h3 class="text-xl font-bold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-tachometer-alt mr-2"></i>Performance Overview
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center p-4 bg-finanslab-50 rounded-lg">
+            <h4 class="text-sm font-medium text-finanslab-700 mb-1">Strategy</h4>
+            <p class="text-lg font-bold text-finanslab-600">{{ run.strategy.get_name_display }}</p>
+          </div>
+          <div class="text-center p-4 bg-blue-50 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-700 mb-1">Ticker</h4>
+            <p class="text-lg font-bold text-blue-600">{{ run.parameters.ticker }}</p>
+          </div>
+          <div class="text-center p-4 bg-green-50 rounded-lg">
+            <h4 class="text-sm font-medium text-green-700 mb-1">Total Return</h4>
+            <p class="text-lg font-bold text-green-600">{{ run.result.total_return }}</p>
+          </div>
+          <div class="text-center p-4 bg-purple-50 rounded-lg">
+            <h4 class="text-sm font-medium text-purple-700 mb-1">Sharpe Ratio</h4>
+            <p class="text-lg font-bold text-purple-600">{{ run.result.sharpe_ratio }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Chart -->
+      {% if equity_curve_dates and equity_curve_values %}
+      <div class="card animate-slide-up mt-8" style="animation-delay: 0.7s;">
+        <h3 class="text-lg font-semibold text-blue-700 mb-4 flex items-center">
+          <i class="fas fa-chart-line mr-2"></i>Performance Chart
+        </h3>
+        <canvas id="performanceChart" height="80"></canvas>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script>
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: {{ equity_curve_dates|safe }},
+            datasets: [{
+              label: 'Equity Curve',
+              data: {{ equity_curve_values|safe }},
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37,99,235,0.08)',
+              pointRadius: 0,
+              fill: true,
+              tension: 0.2,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+              x: {
+                display: true,
+                title: { display: true, text: 'Date' },
+                ticks: { maxTicksLimit: 8 }
+              },
+              y: {
+                display: true,
+                title: { display: true, text: 'Portfolio Value' },
+                beginAtZero: false
+              }
+            }
+          }
+        });
+      </script>
+      {% endif %}
+
+      <!-- Strategy Parameters -->
+      <div class="card animate-slide-up" style="animation-delay: 0.5s;">
+        <h3 class="text-xl font-bold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-cogs mr-2"></i>Strategy Parameters
+        </h3>
+        
+        <!-- Strategy Type and Rules -->
+        <div class="mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+              <div class="flex items-center mb-2">
+                <i class="fas fa-chart-line text-blue-600 mr-2"></i>
+                <span class="text-sm font-semibold text-blue-700">Strategy Type</span>
+              </div>
+              <p class="text-lg font-bold text-blue-800">{{ run.strategy.get_name_display }}</p>
+            </div>
+            
+            <div class="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+              <div class="flex items-center mb-2">
+                <i class="fas fa-tag text-green-600 mr-2"></i>
+                <span class="text-sm font-semibold text-green-700">Ticker</span>
+              </div>
+              <p class="text-lg font-bold text-green-800">{{ run.parameters.ticker }}</p>
+            </div>
+          </div>
+          
+          <!-- Buy/Sell Rules -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {% if run.parameters.buy_on %}
+            <div class="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
+              <div class="flex items-center mb-2">
+                <i class="fas fa-arrow-up text-emerald-600 mr-2"></i>
+                <span class="text-sm font-semibold text-emerald-700">Buy Signal</span>
+              </div>
+              <p class="text-lg font-bold text-emerald-800">{{ run.parameters.buy_on|title }}</p>
+            </div>
+            {% endif %}
+            
+            {% if run.parameters.sell_on %}
+            <div class="p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border border-red-200">
+              <div class="flex items-center mb-2">
+                <i class="fas fa-arrow-down text-red-600 mr-2"></i>
+                <span class="text-sm font-semibold text-red-700">Sell Signal</span>
+              </div>
+              <p class="text-lg font-bold text-red-800">{{ run.parameters.sell_on|title }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Strategy-Specific Parameters -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- SMA Parameters -->
+          {% if run.parameters.window %}
+            <div class="p-3 bg-finanslab-50 rounded-lg border border-finanslab-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-chart-line text-finanslab-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-finanslab-700">Window</span>
+              </div>
+              <p class="text-lg font-bold text-finanslab-800">{{ run.parameters.window }}</p>
+            </div>
+          {% endif %}
+          
+          <!-- RSI Parameters -->
+          {% if run.parameters.oversold %}
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-thermometer-empty text-blue-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-blue-700">Oversold</span>
+              </div>
+              <p class="text-lg font-bold text-blue-800">{{ run.parameters.oversold }}</p>
+            </div>
+          {% endif %}
+          
+          {% if run.parameters.overbought %}
+            <div class="p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-thermometer-full text-orange-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-orange-700">Overbought</span>
+              </div>
+              <p class="text-lg font-bold text-orange-800">{{ run.parameters.overbought }}</p>
+            </div>
+          {% endif %}
+          
+          <!-- MACD Parameters -->
+          {% if run.parameters.fast %}
+            <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-bolt text-purple-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-purple-700">Fast Period</span>
+              </div>
+              <p class="text-lg font-bold text-purple-800">{{ run.parameters.fast }}</p>
+            </div>
+          {% endif %}
+          
+          {% if run.parameters.slow %}
+            <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-turtle text-purple-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-purple-700">Slow Period</span>
+              </div>
+              <p class="text-lg font-bold text-purple-800">{{ run.parameters.slow }}</p>
+            </div>
+          {% endif %}
+          
+          {% if run.parameters.signal %}
+            <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-wave-square text-purple-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-purple-700">Signal Period</span>
+              </div>
+              <p class="text-lg font-bold text-purple-800">{{ run.parameters.signal }}</p>
+            </div>
+          {% endif %}
+          
+          <!-- Mean Reversion Parameters -->
+          {% if run.parameters.threshold %}
+            <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-percentage text-yellow-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-yellow-700">Threshold</span>
+              </div>
+              <p class="text-lg font-bold text-yellow-800">{{ run.parameters.threshold }}</p>
+            </div>
+          {% endif %}
+          
+          <!-- Additional Parameters -->
+          {% if run.parameters.n %}
+            <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div class="flex items-center mb-1">
+                <i class="fas fa-hashtag text-indigo-600 mr-2 text-sm"></i>
+                <span class="text-xs font-medium text-indigo-700">N Days</span>
+              </div>
+              <p class="text-lg font-bold text-indigo-800">{{ run.parameters.n }}</p>
+            </div>
+          {% endif %}
+        </div>
+        
+        <!-- Date Range -->
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-calendar-alt text-gray-600 mr-2"></i>
+            <span class="text-sm font-semibold text-gray-700">Backtest Period</span>
+          </div>
+          <p class="text-lg font-bold text-gray-800">
+            {{ run.parameters.start_date }} to {{ run.parameters.end_date }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Basic Info -->
+      <div class="card animate-slide-up" style="animation-delay: 0.6s;">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-info-circle mr-2"></i>Basic Information
+        </h3>
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Run Date:</span>
+            <span class="font-medium">{{ run.run_at|date:"M d, Y" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Time:</span>
+            <span class="font-medium">{{ run.run_at|date:"H:i" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Date Range:</span>
+            <span class="font-medium text-sm">{{ run.parameters.start_date }} to {{ run.parameters.end_date }}</span>
+          </div>
+          {% if run.is_favorite %}
+            <div class="flex justify-between">
+              <span class="text-gray-600">Status:</span>
+              <span class="text-yellow-600 font-medium">⭐ Favorite</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Performance Metrics -->
+      <div class="card animate-slide-up" style="animation-delay: 0.7s;">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-chart-pie mr-2"></i>Performance Metrics
+        </h3>
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Total Return:</span>
+            <span class="font-semibold {% if run.result.total_return|slice:'1:-1'|add:'0' > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+              {{ run.result.total_return }}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Sharpe Ratio:</span>
+            <span class="font-semibold {% if run.result.sharpe_ratio|add:'0' > 1 %}text-green-600{% elif run.result.sharpe_ratio|add:'0' > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
+              {{ run.result.sharpe_ratio }}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Max Drawdown:</span>
+            <span class="font-semibold text-red-600">{{ run.result.max_drawdown }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card animate-slide-up" style="animation-delay: 0.8s;">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-sticky-note mr-2"></i>Notes
+        </h3>
+        
+        <!-- Display Notes -->
+        <div id="notes-display" class="{% if not run.notes %}hidden{% endif %}">
+          <p id="notes-text" class="text-gray-700 mb-3">{{ run.notes|default:"" }}</p>
+          <button onclick="editNote()" class="text-finanslab-600 hover:text-finanslab-700 text-sm font-medium">
+            <i class="fas fa-edit mr-1"></i>Edit Note
+          </button>
+        </div>
+        
+        <!-- Add Note Button (shown when no notes exist) -->
+        <div id="add-note-btn" class="{% if run.notes %}hidden{% endif %}">
+          <p class="text-gray-500 italic mb-3">No notes added for this run.</p>
+          <button onclick="editNote()" class="text-finanslab-600 hover:text-finanslab-700 text-sm font-medium">
+            <i class="fas fa-plus mr-1"></i>Add Note
+          </button>
+        </div>
+        
+        <!-- Edit Notes Form -->
+        <div id="notes-edit" class="hidden">
+          <textarea 
+            id="notes-textarea" 
+            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-finanslab-500 focus:border-transparent resize-none"
+            rows="4"
+            placeholder="Add your notes about this backtest run..."
+          >{{ run.notes|default:"" }}</textarea>
+          <div class="flex space-x-2 mt-3">
+            <button onclick="saveNote()" class="btn-primary text-sm px-4 py-2">
+              <i class="fas fa-save mr-1"></i>Save
+            </button>
+            <button onclick="cancelEdit()" class="btn-secondary text-sm px-4 py-2">
+              <i class="fas fa-times mr-1"></i>Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card animate-slide-up" style="animation-delay: 0.9s;">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center">
+          <i class="fas fa-bolt mr-2"></i>Quick Actions
+        </h3>
+        <div class="space-y-2">
+          <button onclick="runSimilarBacktest()" class="w-full btn-primary text-sm">
+            <i class="fas fa-redo mr-2"></i>Run Similar
+          </button>
+          <button onclick="toggleFavorite({{ run.id }})" class="w-full btn-secondary text-sm">
+            {% if run.is_favorite %}
+              <i class="fas fa-star mr-2"></i>Remove from Favorites
+            {% else %}
+              <i class="far fa-star mr-2"></i>Add to Favorites
+            {% endif %}
+          </button>
+          <button onclick="shareResults()" class="w-full btn-secondary text-sm">
+            <i class="fas fa-share mr-2"></i>Share Results
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Raw Data (Collapsible) -->
+  <div class="card mt-6 animate-slide-up" style="animation-delay: 1s;">
+    <details>
+      <summary class="text-lg font-semibold text-finanslab-700 cursor-pointer flex items-center">
+        <i class="fas fa-code mr-2"></i>Raw Data
+        <i class="fas fa-chevron-down ml-auto transition-transform duration-200"></i>
+      </summary>
+      <div class="mt-4 space-y-4">
+        <div>
+          <h4 class="font-semibold text-gray-800 mb-2">Parameters:</h4>
+          <pre class="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto">{{ run.parameters|pprint }}</pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-800 mb-2">Results:</h4>
+          <pre class="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto">{{ run.result|pprint }}</pre>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+function runSimilarBacktest() {
+  // Pre-fill the backtest form with similar parameters
+  const params = new URLSearchParams();
+  params.append('strategy', '{{ run.strategy.id }}');
+  params.append('ticker', '{{ run.parameters.ticker }}');
+  params.append('start_date', '{{ run.parameters.start_date }}');
+  params.append('end_date', '{{ run.parameters.end_date }}');
+  
+  window.location.href = `{% url 'run-backtest' %}?${params.toString()}`;
+}
+
+function toggleFavorite(runId) {
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                   document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+  
+  if (!csrfToken) {
+    showNotification('CSRF token not found. Please refresh the page.', 'error');
+    return;
+  }
+  
+  showLoading();
+  fetch(`/backtest/run/${runId}/favorite/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    hideLoading();
+    if (data.success) {
+      // Update button text and icon
+      const button = document.querySelector('button[onclick="toggleFavorite({{ run.id }})"]');
+      if (button) {
+        const icon = button.querySelector('i');
+        if (data.is_favorite) {
+          icon.className = 'fas fa-star mr-2';
+          button.innerHTML = '<i class="fas fa-star mr-2"></i>Remove from Favorites';
+        } else {
+          icon.className = 'far fa-star mr-2';
+          button.innerHTML = '<i class="far fa-star mr-2"></i>Add to Favorites';
+        }
+      }
+      
+      showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success');
+    } else {
+      showNotification('Failed to update favorite status', 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error toggling favorite:', error);
+    hideLoading();
+    showNotification('Error updating favorite status: ' + error.message, 'error');
+  });
+}
+
+function shareResults() {
+  // Create shareable link or copy to clipboard
+  const shareText = `Check out my backtest results: {{ run.strategy.get_name_display }} on {{ run.parameters.ticker }} - {{ run.result.total_return }} return!`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: 'Backtest Results',
+      text: shareText,
+      url: window.location.href
+    });
+  } else {
+    // Fallback: copy to clipboard
+    navigator.clipboard.writeText(shareText).then(() => {
+      showNotification('Results copied to clipboard!', 'success');
+    }).catch(() => {
+      showNotification('Failed to copy results', 'error');
+    });
+  }
+}
+
+// Note editing functions
+function editNote() {
+  document.getElementById('notes-display').classList.add('hidden');
+  document.getElementById('add-note-btn').classList.add('hidden');
+  document.getElementById('notes-edit').classList.remove('hidden');
+  document.getElementById('notes-textarea').focus();
+}
+
+function cancelEdit() {
+  document.getElementById('notes-edit').classList.add('hidden');
+  const hasNotes = document.getElementById('notes-text').textContent.trim() !== '';
+  
+  if (hasNotes) {
+    document.getElementById('notes-display').classList.remove('hidden');
+  } else {
+    document.getElementById('add-note-btn').classList.remove('hidden');
+  }
+}
+
+function saveNote() {
+  const noteText = document.getElementById('notes-textarea').value.trim();
+  
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                   document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+  
+  if (!csrfToken) {
+    showNotification('CSRF token not found. Please refresh the page.', 'error');
+    return;
+  }
+  
+  showLoading();
+  fetch(`/backtest/run/{{ run.id }}/note/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: `note=${encodeURIComponent(noteText)}`
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    hideLoading();
+    if (data.success) {
+      // Update the display
+      document.getElementById('notes-text').textContent = noteText;
+      
+      // Show appropriate section
+      document.getElementById('notes-edit').classList.add('hidden');
+      if (noteText) {
+        document.getElementById('notes-display').classList.remove('hidden');
+        document.getElementById('add-note-btn').classList.add('hidden');
+      } else {
+        document.getElementById('notes-display').classList.add('hidden');
+        document.getElementById('add-note-btn').classList.remove('hidden');
+      }
+      
+      showNotification('Note saved successfully!', 'success');
+    } else {
+      showNotification('Failed to save note', 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error saving note:', error);
+    hideLoading();
+    showNotification('Error saving note: ' + error.message, 'error');
+  });
+}
+
+// Add animation to details element
+document.addEventListener('DOMContentLoaded', function() {
+  const details = document.querySelector('details');
+  const chevron = details.querySelector('.fa-chevron-down');
+  
+  details.addEventListener('toggle', function() {
+    if (this.open) {
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  });
+});
+</script>
+
+<style>
+details[open] summary .fa-chevron-down {
+  transform: rotate(180deg);
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,438 @@
+{% extends 'base.html' %}
+{% load backtest_extras %}
+{% block content %}
+<!-- CSRF Token for AJAX requests -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<div class="max-w-7xl mx-auto mt-10 animate-fade-in">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div>
+      <h2 class="text-3xl font-bold text-finanslab-700 mb-2 animate-slide-up">
+        <i class="fas fa-history mr-3"></i>Backtest History
+      </h2>
+      <p class="text-gray-600 animate-slide-up" style="animation-delay: 0.2s;">
+        View and manage your backtest results
+      </p>
+    </div>
+    <a href="{% url 'run-backtest' %}" class="btn-primary animate-slide-up" style="animation-delay: 0.3s;">
+      <i class="fas fa-play mr-2"></i>New Backtest
+    </a>
+  </div>
+  
+  <div id="favorite-notification"
+     class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 px-8 py-4 rounded-lg shadow-2xl text-lg font-bold flex items-center gap-2
+            text-white border-2 opacity-0 pointer-events-none transition-all duration-500"
+     style="min-width: 280px; max-width: 90vw;">
+    <i class="fas fa-star"></i>
+    <span id="favorite-notification-text"></span>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-6 animate-slide-up" style="animation-delay: 0.4s;">
+    <form method="get" class="flex flex-col lg:flex-row gap-4 items-end">
+      <div class="flex-1">
+        <label class="form-label">Strategy</label>
+        <select name="strategy" class="form-input" onchange="this.form.submit()">
+          <option value="">All Strategies</option>
+          {% for strategy in strategies %}
+            <option value="{{ strategy.name }}" {% if strategy.name == current_strategy %}selected{% endif %}>
+              {{ strategy.get_name_display }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-1">
+        <label class="form-label">Ticker</label>
+        <select name="ticker" class="form-input" onchange="this.form.submit()">
+          <option value="">All Tickers</option>
+          {% for ticker in tickers %}
+            <option value="{{ ticker }}" {% if ticker == current_ticker %}selected{% endif %}>{{ ticker }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-1">
+        <label class="form-label">Sort By</label>
+        <select name="sort" class="form-input" onchange="this.form.submit()">
+          <option value="date" {% if current_sort == 'date' %}selected{% endif %}>Date</option>
+          <option value="total_return" {% if current_sort == 'total_return' %}selected{% endif %}>Total Return</option>
+          <option value="sharpe" {% if current_sort == 'sharpe' %}selected{% endif %}>Sharpe Ratio</option>
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="btn-primary">
+          <i class="fas fa-filter mr-2"></i>Filter
+        </button>
+        <a href="{% url 'backtest-dashboard' %}" class="btn-secondary">
+          <i class="fas fa-times mr-2"></i>Clear
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results Table -->
+  <div class="card animate-slide-up" style="animation-delay: 0.5s;">
+    {% if runs %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full">
+          <thead>
+            <tr class="bg-finanslab-50 border-b border-finanslab-200">
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Strategy</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Ticker</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Total Return</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Sharpe</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Max Drawdown</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-finanslab-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for run in runs %}
+              <tr class="table-row-hover animate-slide-up" 
+                  id="run-{{ run.id }}"
+                  style="animation-delay: {{ forloop.counter|add:5|multiply:0.1 }}s;">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div class="flex items-center">
+                    <i class="fas fa-calendar text-finanslab-500 mr-2"></i>
+                    {{ run.run_at|date:"M d, Y" }}
+                    <br>
+                    <span class="text-xs text-gray-500">{{ run.run_at|date:"H:i" }}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="w-8 h-8 bg-finanslab-100 rounded-full flex items-center justify-center mr-3">
+                      <i class="fas fa-chart-line text-finanslab-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <div class="text-sm font-medium text-gray-900">{{ run.strategy.get_name_display }}</div>
+                      <div class="text-sm text-gray-500">{{ run.strategy.name }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {{ run.parameters.ticker }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  {% with val=run.result.total_return %}
+                  {% if val %}
+                    {% if val|stringformat:'s'|slice:"0:1" == '-' %}
+                      <span class="font-semibold text-red-600">{{ val }}</span>
+                    {% else %}
+                      <span class="font-semibold text-green-600">{{ val }}</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="font-semibold text-gray-500">--</span>
+                  {% endif %}
+                  {% endwith %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span class="font-semibold {% if run.result.sharpe_ratio|add:'0' > 1 %}text-green-600{% elif run.result.sharpe_ratio|add:'0' > 0 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                    {{ run.result.sharpe_ratio }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span class="font-semibold text-red-600">
+                    {{ run.result.max_drawdown }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div class="flex items-center space-x-2">
+                    <a href="{% url 'run-detail' run.id %}" 
+                       class="text-finanslab-600 hover:text-finanslab-900 transition-colors duration-200"
+                       title="View Details">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'download-report' run.id %}" 
+                       class="text-green-600 hover:text-green-900 transition-colors duration-200"
+                       title="Download Report">
+                      <i class="fas fa-download"></i>
+                    </a>
+                    <button onclick="toggleFavorite({{ run.id }})" 
+                            class="text-yellow-600 hover:text-yellow-900 transition-colors duration-200"
+                            title="Toggle Favorite" 
+                            id="fav-{{ run.id }}">
+                      {% if run.is_favorite %}
+                        <i class="fas fa-star"></i>
+                      {% else %}
+                        <i class="far fa-star"></i>
+                      {% endif %}
+                    </button>
+                    <button onclick="deleteRun({{ run.id }})" 
+                            class="text-red-600 hover:text-red-900 transition-colors duration-200"
+                            title="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Summary Stats -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="text-center p-4 bg-finanslab-50 rounded-lg">
+            <h4 class="text-sm font-medium text-finanslab-700">Total Runs</h4>
+            <p class="text-2xl font-bold text-finanslab-600">{{ runs|length }}</p>
+          </div>
+          <div class="text-center p-4 bg-green-50 rounded-lg">
+            <h4 class="text-sm font-medium text-green-700">Best Return</h4>
+            <p class="text-2xl font-bold text-green-600">
+              {% for run in runs %}
+                {% if forloop.first %}{{ run.result.total_return }}{% endif %}
+              {% endfor %}
+            </p>
+          </div>
+          <div class="text-center p-4 bg-blue-50 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-700">Best Sharpe</h4>
+            <p class="text-2xl font-bold text-blue-600">
+              {% for run in runs %}
+                {% if forloop.first %}{{ run.result.sharpe_ratio }}{% endif %}
+              {% endfor %}
+            </p>
+          </div>
+          <div class="text-center p-4 bg-yellow-50 rounded-lg">
+            <h4 class="text-sm font-medium text-yellow-700">Favorites</h4>
+            <p class="text-2xl font-bold text-yellow-600">{{ total_favorites }}</p>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-center py-12 animate-slide-up" style="animation-delay: 0.6s;">
+        <i class="fas fa-chart-line text-6xl text-gray-300 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-600 mb-2">No backtest runs found</h3>
+        <p class="text-gray-500 mb-6">Start by running your first backtest to see results here</p>
+        <a href="{% url 'run-backtest' %}" class="btn-primary">
+          <i class="fas fa-play mr-2"></i>Run Your First Backtest
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+@keyframes slideOut {
+  0% { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% { 
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+.table-row-hover {
+  transition: all 0.2s ease-in-out;
+}
+</style>
+
+<script>
+console.log('Dashboard favorite script loaded');
+
+function deleteRun(runId) {
+  if (!runId) {
+    showNotification('Invalid run ID', 'error');
+    return;
+  }
+  if (confirm('Are you sure you want to delete this backtest run? This action cannot be undone.')) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                      document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    if (!csrfToken) {
+      showNotification('CSRF token not found. Please refresh the page.', 'error');
+      return;
+    }
+    showLoading();
+    fetch(`/backtest/run/${runId}/delete/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      hideLoading();
+      if (data.success) {
+        const row = document.getElementById(`run-${runId}`);
+        if (row) {
+          row.style.animation = 'slideOut 0.3s ease-out';
+          setTimeout(() => {
+            row.remove();
+            showNotification('Backtest run deleted successfully!', 'success');
+          }, 300);
+        } else {
+          showNotification('Backtest run deleted successfully!', 'success');
+          setTimeout(() => { window.location.reload(); }, 1000);
+        }
+      } else {
+        showNotification('Failed to delete backtest run', 'error');
+      }
+    })
+    .catch(error => {
+      hideLoading();
+      showNotification('Error deleting backtest run: ' + error.message, 'error');
+    });
+  }
+}
+
+function toggleFavorite(runId) {
+  if (!runId) {
+    console.error('Invalid run ID:', runId);
+    showNotification('Invalid run ID', 'error');
+    return;
+  }
+  
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                   document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+  
+  if (!csrfToken) {
+    showNotification('CSRF token not found. Please refresh the page.', 'error');
+    return;
+  }
+  
+  try {
+    showLoading();
+    fetch(`/backtest/run/${runId}/favorite/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      hideLoading();
+      if (data.success) {
+        const favBtn = document.getElementById(`fav-${runId}`);
+        if (favBtn) {
+          if (data.is_favorite) {
+            favBtn.innerHTML = '<i class="fas fa-star"></i>';
+            favBtn.title = 'Remove from favorites';
+            showNotification('Added to favorites!', 'success');
+          } else {
+            favBtn.innerHTML = '<i class="far fa-star"></i>';
+            favBtn.title = 'Add to favorites';
+            showNotification('Removed from favorites!', 'info');
+          }
+        } else {
+          showNotification('Favorite status updated!', 'success');
+        }
+      } else {
+        showNotification('Failed to update favorite status', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error toggling favorite:', error);
+      hideLoading();
+      showNotification('Error updating favorite status: ' + error.message, 'error');
+    });
+  } catch (error) {
+    console.error('Error in toggleFavorite function:', error);
+    hideLoading();
+    showNotification('Error updating favorite status', 'error');
+  }
+}
+
+// Add hover effects and animations
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Dashboard DOM loaded');
+  
+  const tableRows = document.querySelectorAll('tbody tr');
+  console.log('Found table rows:', tableRows.length);
+  
+  tableRows.forEach(row => {
+    row.addEventListener('mouseenter', function() {
+      this.style.transform = 'scale(1.01)';
+      this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    });
+    row.addEventListener('mouseleave', function() {
+      this.style.transform = 'scale(1)';
+      this.style.boxShadow = 'none';
+    });
+  });
+
+  const favoriteBtns = document.querySelectorAll('.favorite-btn');
+  console.log('Favorite buttons found:', favoriteBtns.length);
+  favoriteBtns.forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      console.log('Favorite button clicked', this);
+      e.preventDefault();
+      const strategyId = this.getAttribute('data-strategy-id');
+      const url = this.getAttribute('data-fav-url');
+      
+      if (!strategyId || !url) {
+        console.error('Missing data attributes:', { strategyId, url });
+        showNotification('Error: Missing data for favorite action', 'error');
+        return;
+      }
+      
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          const icon = this.querySelector('i');
+          const notif = document.getElementById('favorite-notification');
+          const notifText = document.getElementById('favorite-notification-text');
+          
+          if (icon && notif && notifText) {
+            if (data.is_favorite) {
+              icon.className = 'fas fa-star text-yellow-400';
+              this.title = 'Remove from favorites';
+              notifText.textContent = 'Added to favorites!';
+              notif.style.backgroundColor = '#22c55e'; // green
+            } else {
+              icon.className = 'far fa-star';
+              this.title = 'Add to favorites';
+              notifText.textContent = 'Removed from favorites!';
+              notif.style.backgroundColor = '#ef4444'; // red
+              // Remove the card from the dashboard
+              const card = document.getElementById('fav-strategy-' + strategyId);
+              if (card) card.remove();
+            }
+            notif.classList.remove('opacity-0', 'pointer-events-none');
+            notif.classList.add('opacity-100');
+            setTimeout(() => {
+              notif.classList.add('opacity-0', 'pointer-events-none');
+              notif.classList.remove('opacity-100');
+            }, 1600);
+          }
+        } else {
+          showNotification('Failed to update favorite status', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error in favorite button click:', error);
+        showNotification('Error updating favorite status: ' + error.message, 'error');
+      });
+    });
+  });
+});
+</script>
+
+{% endblock %} 

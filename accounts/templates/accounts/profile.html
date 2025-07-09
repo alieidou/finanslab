@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto py-12 px-6">
+    <h1 class="text-3xl font-bold mb-6 text-finanslab-700">User Profile</h1>
+    <div class="bg-white shadow rounded-lg p-6">
+        <p class="mb-4"><span class="font-semibold">Username:</span> {{ user.username }}</p>
+        <p class="mb-4"><span class="font-semibold">Email:</span> {{ user.email }}</p>
+        <!-- Add more profile fields here if needed -->
+    </div>
+</div>
+{% endblock %} 

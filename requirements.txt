@@ -1,0 +1,10 @@
+django==4.2
+psycopg2-binary
+pandas
+numpy
+matplotlib
+yfinance
+celery
+redis
+django-environ
+djangorestframework 

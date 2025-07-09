@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10 animate-fade-in">
+  <div class="card">
+    <div class="text-center mb-6">
+      <i class="fas fa-plus-circle text-4xl text-finanslab-600 mb-4 animate-bounce-in"></i>
+      <h2 class="text-2xl font-bold text-finanslab-700">Create New Strategy</h2>
+      <p class="text-gray-600 mt-2">Define your trading strategy parameters</p>
+    </div>
+    
+    <form method="post" class="space-y-8" id="strategy-form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% if form.instance.pk %}
+      <div class="flex justify-end mb-4">
+        <button type="button" class="favorite-btn text-2xl" data-strategy-id="{{ form.instance.pk }}" data-fav-url="{% url 'strategy-favorite' form.instance.pk %}" title="Add to favorites">
+          {% if is_favorite %}
+            <i class="fas fa-star text-yellow-400"></i>
+          {% else %}
+            <i class="far fa-star"></i>
+          {% endif %}
+        </button>
+      </div>
+      {% endif %}
+      
+      <!-- General Info Card -->
+      <div class="card bg-white shadow-sm p-6 mb-4">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center"><i class="fas fa-info-circle mr-2"></i>General Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="form-label">Strategy Name</label>
+            {{ form.strategy_name }}
+            {% if form.strategy_name.errors %}
+              <div class="text-red-500 text-sm animate-shake">
+                {% for error in form.strategy_name.errors %}
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          <div>
+            <label class="form-label">Strategy Type</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+              <div class="text-red-500 text-sm animate-shake">
+                {% for error in form.name.errors %}
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="form-label">Description</label>
+          {{ form.description }}
+          {% if form.description.errors %}
+            <div class="text-red-500 text-sm animate-shake">
+              {% for error in form.description.errors %}
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+          <p class="text-sm text-gray-500">Describe your strategy and its logic</p>
+        </div>
+      </div>
+      
+      <!-- Parameters Card -->
+      <div class="card bg-white shadow-sm p-6 mb-4">
+        <h3 class="text-lg font-semibold text-finanslab-700 mb-4 flex items-center"><i class="fas fa-cogs mr-2"></i>Strategy Parameters</h3>
+        <div class="space-y-4" id="strategy-params">
+          <!-- SMA Fields -->
+          <div class="strategy-fields" id="sma-fields" style="display:none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">SMA Window</label>
+                {{ form.sma_window }}
+              </div>
+              <div>
+                <label class="form-label">N days (for above/below N days)</label>
+                {{ form.sma_n }}
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mt-4">
+              <div>
+                <label class="form-label">SMA Buy Rule</label>
+                {{ form.sma_buy_on }}
+              </div>
+              <div>
+                <label class="form-label">SMA Sell Rule</label>
+                {{ form.sma_sell_on }}
+              </div>
+            </div>
+          </div>
+          <!-- RSI Fields -->
+          <div class="strategy-fields" id="rsi-fields" style="display:none;">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="form-label">RSI Window</label>
+                {{ form.rsi_window }}
+              </div>
+              <div>
+                <label class="form-label">RSI Oversold</label>
+                {{ form.rsi_oversold }}
+              </div>
+              <div>
+                <label class="form-label">RSI Overbought</label>
+                {{ form.rsi_overbought }}
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mt-4">
+              <div>
+                <label class="form-label">RSI Buy Rule</label>
+                {{ form.rsi_buy_on }}
+              </div>
+              <div>
+                <label class="form-label">RSI Sell Rule</label>
+                {{ form.rsi_sell_on }}
+              </div>
+            </div>
+          </div>
+          <!-- MACD Fields -->
+          <div class="strategy-fields" id="macd-fields" style="display:none;">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="form-label">MACD Fast</label>
+                {{ form.macd_fast }}
+              </div>
+              <div>
+                <label class="form-label">MACD Slow</label>
+                {{ form.macd_slow }}
+              </div>
+              <div>
+                <label class="form-label">MACD Signal</label>
+                {{ form.macd_signal }}
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mt-4">
+              <div>
+                <label class="form-label">MACD Buy Rule</label>
+                {{ form.macd_buy_on }}
+              </div>
+              <div>
+                <label class="form-label">MACD Sell Rule</label>
+                {{ form.macd_sell_on }}
+              </div>
+            </div>
+          </div>
+          <!-- Mean Reversion Fields -->
+          <div class="strategy-fields" id="mean-fields" style="display:none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">Mean Window</label>
+                {{ form.mean_window }}
+              </div>
+              <div>
+                <label class="form-label">Mean Threshold</label>
+                {{ form.mean_threshold }}
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mt-4">
+              <div>
+                <label class="form-label">Mean Buy Rule</label>
+                {{ form.mean_buy_on }}
+              </div>
+              <div>
+                <label class="form-label">Mean Sell Rule</label>
+                {{ form.mean_sell_on }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Action Buttons -->
+      <div class="flex space-x-4 pt-4">
+        <button type="submit" class="btn-primary flex-1">
+          <i class="fas fa-save mr-2"></i>Save Strategy
+        </button>
+        <a href="{% url 'strategy-list' %}" class="btn-secondary flex-1 text-center">
+          <i class="fas fa-times mr-2"></i>Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Strategy Type Help -->
+  <div class="card mt-6 animate-slide-up" style="animation-delay: 0.5s;">
+    <h3 class="text-lg font-semibold text-finanslab-700 mb-4">
+      <i class="fas fa-info-circle mr-2"></i>Strategy Types
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="p-4 bg-finanslab-50 rounded-lg">
+        <h4 class="font-semibold text-finanslab-700 mb-2">Simple Moving Average (SMA)</h4>
+        <p class="text-sm text-gray-600">Buy when price crosses above moving average, sell when below.</p>
+        <pre class="bg-gray-100 p-2 rounded text-xs mt-2">{
+  "window": 20,
+  "buy_on": "cross_above",
+  "sell_on": "cross_below"
+}</pre>
+      </div>
+      <div class="p-4 bg-beige-50 rounded-lg">
+        <h4 class="font-semibold text-beige-700 mb-2">Relative Strength Index (RSI)</h4>
+        <p class="text-sm text-gray-600">Buy when oversold (RSI &lt; 30), sell when overbought (RSI &gt; 70).</p>
+        <pre class="bg-gray-100 p-2 rounded text-xs mt-2">{
+  "window": 14,
+  "buy_on": "rsi_below_30",
+  "sell_on": "rsi_above_70"
+}</pre>
+      </div>
+      <div class="p-4 bg-blue-50 rounded-lg">
+        <h4 class="font-semibold text-blue-700 mb-2">MACD</h4>
+        <p class="text-sm text-gray-600">Buy when MACD line crosses above signal line.</p>
+        <pre class="bg-gray-100 p-2 rounded text-xs mt-2">{
+  "fast": 12,
+  "slow": 26,
+  "signal": 9,
+  "buy_on": "macd_above_signal",
+  "sell_on": "macd_below_signal"
+}</pre>
+      </div>
+      <div class="p-4 bg-purple-50 rounded-lg">
+        <h4 class="font-semibold text-purple-700 mb-2">Mean Reversion</h4>
+        <p class="text-sm text-gray-600">Buy when price deviates significantly below mean.</p>
+        <pre class="bg-gray-100 p-2 rounded text-xs mt-2">{
+  "window": 20,
+  "threshold": 0.02,
+  "buy_on": "below_threshold",
+  "sell_on": "above_threshold"
+}</pre>
+      </div>
+    </div>
+    <a href="{% url 'strategy-list' %}?favorites=1"
+       class="btn-primary w-full mt-4 flex items-center justify-center text-lg">
+      <i class="fas fa-star mr-2"></i>View All Favorite Strategies
+    </a>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('strategy-form');
+  const strategyType = document.getElementById('id_name');
+  const smaFields = document.getElementById('sma-fields');
+  const rsiFields = document.getElementById('rsi-fields');
+  const macdFields = document.getElementById('macd-fields');
+  const meanFields = document.getElementById('mean-fields');
+  
+  function showFields() {
+    smaFields.style.display = 'none';
+    rsiFields.style.display = 'none';
+    macdFields.style.display = 'none';
+    meanFields.style.display = 'none';
+    if (strategyType.value === 'SMA') {
+      smaFields.style.display = '';
+    } else if (strategyType.value === 'RSI') {
+      rsiFields.style.display = '';
+    } else if (strategyType.value === 'MACD') {
+      macdFields.style.display = '';
+    } else if (strategyType.value === 'MEAN_REVERSION') {
+      meanFields.style.display = '';
+    }
+  }
+  strategyType.addEventListener('change', showFields);
+  showFields();
+  
+  // Form validation
+  form.addEventListener('submit', function(e) {
+    const description = document.getElementById('id_description').value;
+    
+    if (description.trim().length < 10) {
+      e.preventDefault();
+      showNotification('Description must be at least 10 characters long', 'error');
+      return;
+    }
+  });
+  
+  // Add character counter for description
+  const descriptionField = document.getElementById('id_description');
+  if (descriptionField) {
+    const counter = document.createElement('div');
+    counter.className = 'text-sm text-gray-500 mt-1';
+    descriptionField.parentNode.appendChild(counter);
+    
+    descriptionField.addEventListener('input', function() {
+      const length = this.value.length;
+      counter.textContent = `${length} characters`;
+      counter.className = `text-sm mt-1 ${length < 10 ? 'text-red-500' : 'text-gray-500'}`;
+    });
+  }
+  
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const strategyId = this.getAttribute('data-strategy-id');
+      const url = this.getAttribute('data-fav-url');
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const icon = this.querySelector('i');
+          if (data.is_favorite) {
+            icon.className = 'fas fa-star text-yellow-400';
+            this.title = 'Remove from favorites';
+          } else {
+            icon.className = 'far fa-star';
+            this.title = 'Add to favorites';
+          }
+          const notif = document.getElementById('favorite-notification');
+          notif.style.backgroundColor = data.is_favorite ? '#22c55e' : '#ef4444';
+          notif.classList.remove('opacity-0', 'pointer-events-none');
+          notif.classList.add('opacity-100');
+          setTimeout(() => {
+            notif.classList.add('opacity-0', 'pointer-events-none');
+            notif.classList.remove('opacity-100');
+          }, 1600);
+        }
+      });
+    });
+  });
+});
+</script>
+
+<style>
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+</style>
+{% endblock %} 

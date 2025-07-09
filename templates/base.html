@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FinansLab - Financial Strategy Backtesting{% endblock %}</title>
+    {% load static %}
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/finanslab.js' %}?v={% now 'U' %}"></script>
+</head>
+<body class="bg-beige-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50 animate-slide-down">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <a href="{% url 'accounts-dashboard' %}" class="text-2xl font-bold text-finanslab-600 hover:text-finanslab-700 transition-colors duration-200">
+                            <i class="fas fa-chart-line mr-2"></i>FinansLab
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'accounts-dashboard' %}" class="text-gray-700 hover:text-finanslab-600 transition-colors duration-200">
+                            <i class="fas fa-home mr-1"></i>Dashboard
+                        </a>
+                        <a href="{% url 'strategy-list' %}" class="text-gray-700 hover:text-finanslab-600 transition-colors duration-200">
+                            <i class="fas fa-cogs mr-1"></i>Strategies
+                        </a>
+                        <a href="{% url 'run-backtest' %}" class="text-gray-700 hover:text-finanslab-600 transition-colors duration-200">
+                            <i class="fas fa-play mr-1"></i>Backtest
+                        </a>
+                        <a href="{% url 'backtest-dashboard' %}" class="text-gray-700 hover:text-finanslab-600 transition-colors duration-200">
+                            <i class="fas fa-history mr-1"></i>History
+                        </a>
+                        <div class="relative group">
+                            <button class="text-gray-700 hover:text-finanslab-600 transition-colors duration-200">
+                                <i class="fas fa-user mr-1"></i>{{ user.username }}
+                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                <a href="{% url 'profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-finanslab-50">
+                                    <i class="fas fa-id-badge mr-2"></i>Profile
+                                </a>
+                                <a href="{% url 'logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-finanslab-50">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn-primary">
+                            <i class="fas fa-sign-in-alt mr-1"></i>Login
+                        </a>
+                        <a href="{% url 'register' %}" class="btn-secondary">
+                            <i class="fas fa-user-plus mr-1"></i>Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="min-h-screen">
+        {% if messages %}
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} mb-4 animate-bounce-in" role="alert">
+                        <div class="flex items-center p-4 rounded-lg {% if message.tags == 'success' %}bg-finanslab-100 text-finanslab-800 border border-finanslab-200{% elif message.tags == 'error' %}bg-red-100 text-red-800 border border-red-200{% else %}bg-blue-100 text-blue-800 border border-blue-200{% endif %}">
+                            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} mr-2"></i>
+                            {{ message }}
+                            <button type="button" class="ml-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 hover:bg-opacity-20 focus:outline-none" onclick="this.parentElement.parentElement.remove()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="fade-in-section">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white shadow-lg mt-16 animate-slide-up">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <div class="text-center text-gray-600">
+                <p>&copy; 2025 FinansLab. All rights reserved.</p>
+                <p class="text-sm mt-2">Financial Strategy Backtesting Platform</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 flex flex-col items-center">
+            <div class="loading-spinner mb-4"></div>
+            <p class="text-gray-700">Processing...</p>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in sections
+        document.addEventListener('DOMContentLoaded', function() {
+            const fadeSections = document.querySelectorAll('.fade-in-section');
+            fadeSections.forEach(section => {
+                observer.observe(section);
+            });
+
+            // Add hover effects to cards
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-4px) scale(1.02)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Add loading states to forms
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function() {
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+                        submitBtn.disabled = true;
+                    }
+                });
+            });
+
+            // Add smooth scrolling to anchor links
+            const anchorLinks = document.querySelectorAll('a[href^="#"]');
+            anchorLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Add tooltip functionality
+            const tooltipElements = document.querySelectorAll('[title]');
+            tooltipElements.forEach(element => {
+                element.addEventListener('mouseenter', function(e) {
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'absolute z-50 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg';
+                    tooltip.textContent = this.getAttribute('title');
+                    tooltip.style.left = e.pageX + 10 + 'px';
+                    tooltip.style.top = e.pageY - 30 + 'px';
+                    document.body.appendChild(tooltip);
+                    this._tooltip = tooltip;
+                });
+
+                element.addEventListener('mouseleave', function() {
+                    if (this._tooltip) {
+                        this._tooltip.remove();
+                        this._tooltip = null;
+                    }
+                });
+            });
+
+            // Add counter animation for numbers
+            const counters = document.querySelectorAll('.counter');
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                const duration = 2000;
+                const increment = target / (duration / 16);
+                let current = 0;
+
+                const updateCounter = () => {
+                    current += increment;
+                    if (current < target) {
+                        counter.textContent = Math.floor(current);
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        counter.textContent = target;
+                    }
+                };
+
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            updateCounter();
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                });
+
+                observer.observe(counter);
+            });
+        });
+
+        // Utility functions
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showNotification(message, type = 'info') {
+            // Remove any existing notifications
+            document.querySelectorAll('.finanslab-notification').forEach(n => n.remove());
+
+            const notification = document.createElement('div');
+            notification.className = `finanslab-notification fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg animate-slide-down ${type === 'success' ? 'bg-finanslab-100 text-finanslab-800' : type === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>
+                    ${message}
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Add CSRF token to all AJAX requests
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        }
+
+        // Enhanced fetch with CSRF token
+        function fetchWithCSRF(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'Content-Type': 'application/json',
+                },
+            };
+            return fetch(url, { ...defaultOptions, ...options });
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-4xl mx-auto mt-10 animate-fade-in">
+  <div class="card">
+    <div class="text-center mb-8">
+      <i class="fas fa-play-circle text-4xl text-finanslab-600 mb-4 animate-bounce-in"></i>
+      <h2 class="text-2xl font-bold text-finanslab-700">Run Backtest</h2>
+      <p class="text-gray-600 mt-2">Test your trading strategy with historical data</p>
+    </div>
+    
+    <form method="post" id="backtest-form" class="space-y-6">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      
+      <!-- Strategy Selection -->
+      <div class="space-y-2">
+        <label class="form-label">
+          <i class="fas fa-chart-line mr-2"></i>Strategy
+        </label>
+        {{ form.strategy }}
+        {% if form.strategy.errors %}
+          <div class="text-red-500 text-sm animate-shake">
+            {% for error in form.strategy.errors %}
+              <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      
+      <!-- Basic Parameters -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <label class="form-label">
+            <i class="fas fa-tag mr-2"></i>Ticker Symbol
+          </label>
+          {{ form.ticker }}
+          {% if form.ticker.errors %}
+            <div class="text-red-500 text-sm animate-shake">
+              {% for error in form.ticker.errors %}
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+          <p class="text-sm text-gray-500">e.g., AAPL, GOOGL, MSFT</p>
+        </div>
+        
+        <div class="space-y-2">
+          <label class="form-label">
+            <i class="fas fa-calendar mr-2"></i>Date Range
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            {{ form.start_date }}
+            {{ form.end_date }}
+          </div>
+          {% if form.start_date.errors or form.end_date.errors %}
+            <div class="text-red-500 text-sm animate-shake">
+              {% for error in form.start_date.errors %}
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+              {% endfor %}
+              {% for error in form.end_date.errors %}
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Strategy-Specific Parameters -->
+      <div id="strategy-params" class="space-y-4">
+        <!-- RSI Parameters -->
+        <div class="strategy-param strategy-rsi space-y-2" style="display:none;">
+          <label class="form-label">
+            <i class="fas fa-chart-line mr-2"></i>RSI Window
+          </label>
+          {{ form.rsi_window }}
+          <p class="text-sm text-gray-500">Number of periods for RSI calculation</p>
+        </div>
+        
+        <!-- MACD Parameters -->
+        <div class="strategy-param strategy-macd space-y-2" style="display:none;">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="form-label">MACD Fast</label>
+              {{ form.macd_fast }}
+            </div>
+            <div>
+              <label class="form-label">MACD Slow</label>
+              {{ form.macd_slow }}
+            </div>
+            <div>
+              <label class="form-label">MACD Signal</label>
+              {{ form.macd_signal }}
+            </div>
+          </div>
+          <p class="text-sm text-gray-500">Fast, slow, and signal periods for MACD calculation</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            <div>
+              <label class="form-label">MACD Buy Rule</label>
+              {{ form.macd_buy_rule }}
+            </div>
+            <div>
+              <label class="form-label">MACD Sell Rule</label>
+              {{ form.macd_sell_rule }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Mean Reversion Parameters -->
+        <div class="strategy-param strategy-meanreversion space-y-2" style="display:none;">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">Mean Window</label>
+              {{ form.mean_window }}
+            </div>
+            <div>
+              <label class="form-label">Mean Threshold</label>
+              {{ form.mean_threshold }}
+            </div>
+          </div>
+          <p class="text-sm text-gray-500">Window for mean calculation and threshold for signals</p>
+        </div>
+      </div>
+      
+      <!-- Submit Button -->
+      <div class="pt-4">
+        <button type="submit" class="btn-primary w-full">
+          <i class="fas fa-play mr-2"></i>Run Backtest
+        </button>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Results Section -->
+  {% if result %}
+    <div class="card mt-8 animate-slide-up">
+      {% if result.error %}
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+          <h3 class="text-xl font-semibold text-red-700 mb-2">Error</h3>
+          <p class="text-red-600">{{ result.error }}</p>
+        </div>
+      {% else %}
+        <div class="text-center mb-6">
+          <i class="fas fa-chart-bar text-4xl text-finanslab-600 mb-4"></i>
+          <h3 class="text-2xl font-bold text-finanslab-700">Backtest Results</h3>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div class="text-center p-4 bg-finanslab-50 rounded-lg">
+            <h4 class="text-sm font-medium text-finanslab-700 mb-1">Strategy</h4>
+            <p class="text-lg font-bold text-finanslab-600">{{ result.strategy }}</p>
+          </div>
+          <div class="text-center p-4 bg-blue-50 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-700 mb-1">Ticker</h4>
+            <p class="text-lg font-bold text-blue-600">{{ result.ticker }}</p>
+          </div>
+          <div class="text-center p-4 bg-green-50 rounded-lg">
+            <h4 class="text-sm font-medium text-green-700 mb-1">Total Return</h4>
+            <p class="text-lg font-bold text-green-600">{{ result.total_return }}</p>
+          </div>
+          <div class="text-center p-4 bg-purple-50 rounded-lg">
+            <h4 class="text-sm font-medium text-purple-700 mb-1">Sharpe Ratio</h4>
+            <p class="text-lg font-bold text-purple-600">{{ result.sharpe_ratio }}</p>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <h4 class="font-semibold text-gray-800 mb-2">Parameters Used</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+              {% if result.rsi_window %}<li><strong>RSI Window:</strong> {{ result.rsi_window }}</li>{% endif %}
+              {% if result.macd_fast %}<li><strong>MACD Fast:</strong> {{ result.macd_fast }}</li>{% endif %}
+              {% if result.macd_slow %}<li><strong>MACD Slow:</strong> {{ result.macd_slow }}</li>{% endif %}
+              {% if result.macd_signal %}<li><strong>MACD Signal:</strong> {{ result.macd_signal }}</li>{% endif %}
+              {% if result.mean_window %}<li><strong>Mean Window:</strong> {{ result.mean_window }}</li>{% endif %}
+              {% if result.mean_threshold %}<li><strong>Mean Threshold:</strong> {{ result.mean_threshold }}</li>{% endif %}
+              {% if result.macd_buy_rule %}<li><strong>MACD Buy Rule:</strong> {{ result.macd_buy_rule }}</li>{% endif %}
+              {% if result.macd_sell_rule %}<li><strong>MACD Sell Rule:</strong> {{ result.macd_sell_rule }}</li>{% endif %}
+            </ul>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <h4 class="font-semibold text-gray-800 mb-2">Performance Metrics</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+              <li><strong>Date Range:</strong> {{ result.start_date }} to {{ result.end_date }}</li>
+              <li><strong>Max Drawdown:</strong> {{ result.max_drawdown }}</li>
+              <li><strong>Sharpe Ratio:</strong> {{ result.sharpe_ratio }}</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="mt-6 flex justify-center space-x-4">
+          <a href="{% url 'backtest-dashboard' %}" class="btn-secondary">
+            <i class="fas fa-history mr-2"></i>View History
+          </a>
+          <button onclick="runAnotherBacktest()" class="btn-primary">
+            <i class="fas fa-redo mr-2"></i>Run Another
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function showStrategyFields() {
+  const strategy = document.getElementById('id_strategy');
+  const all = document.querySelectorAll('.strategy-param');
+  all.forEach(el => el.style.display = 'none');
+  
+  if (!strategy) return;
+  
+  let val = strategy.options[strategy.selectedIndex].text.toLowerCase();
+  if (val.includes('rsi')) {
+    document.querySelectorAll('.strategy-rsi').forEach(el => {
+      el.style.display = 'block';
+      el.classList.add('animate-slide-down');
+    });
+  } else if (val.includes('macd')) {
+    document.querySelectorAll('.strategy-macd').forEach(el => {
+      el.style.display = 'block';
+      el.classList.add('animate-slide-down');
+    });
+  } else if (val.includes('mean')) {
+    document.querySelectorAll('.strategy-meanreversion').forEach(el => {
+      el.style.display = 'block';
+      el.classList.add('animate-slide-down');
+    });
+  }
+}
+
+function runAnotherBacktest() {
+  document.getElementById('backtest-form').reset();
+  document.querySelectorAll('.strategy-param').forEach(el => el.style.display = 'none');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const strategy = document.getElementById('id_strategy');
+  if (strategy) {
+    strategy.addEventListener('change', showStrategyFields);
+    showStrategyFields();
+  }
+  
+  // Form validation
+  const form = document.getElementById('backtest-form');
+  form.addEventListener('submit', function(e) {
+    const ticker = document.getElementById('id_ticker').value;
+    const startDate = document.getElementById('id_start_date').value;
+    const endDate = document.getElementById('id_end_date').value;
+    
+    if (!ticker || !startDate || !endDate) {
+      e.preventDefault();
+      showNotification('Please fill in all required fields', 'error');
+      return;
+    }
+    
+    if (new Date(startDate) >= new Date(endDate)) {
+      e.preventDefault();
+      showNotification('End date must be after start date', 'error');
+      return;
+    }
+    
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Running Backtest...';
+    submitBtn.disabled = true;
+  });
+  
+  // Auto-fill today's date for end date if empty
+  const endDateField = document.getElementById('id_end_date');
+  if (endDateField && !endDateField.value) {
+    const today = new Date().toISOString().split('T')[0];
+    endDateField.value = today;
+  }
+});
+</script>
+
+<style>
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+</style>
+{% endblock %} 
