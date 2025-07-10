@@ -95,11 +95,7 @@ WSGI_APPLICATION = 'finanslab.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'finanslab',
-        'USER': 'finanslabuser',
-        'PASSWORD': 'My.AliSql@2024',
-        'HOST': 'localhost',
-        'PORT': 3306,
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

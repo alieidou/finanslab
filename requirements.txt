@@ -7,4 +7,6 @@ yfinance
 celery
 redis
 django-environ
-djangorestframework 
+djangorestframework
+vectorbt
+gunicorn
