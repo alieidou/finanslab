@@ -38,9 +38,9 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = False
 
-ALLOWED_HOSTS = ['45.76.251.17']
+ALLOWED_HOSTS = ['45.76.251.17', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -94,12 +94,12 @@ WSGI_APPLICATION = 'finanslab.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': env('MYSQL_DATABASE'),
-        'USER': env('MYSQL_USER'),
-        'PASSWORD': env('MYSQL_PASSWORD'),
-        'HOST': env('MYSQL_HOST'),
-        'PORT': env('MYSQL_PORT'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'finanslab',
+        'USER': 'finanslabuser',
+        'PASSWORD': 'My.AliSql@2024',
+        'HOST': 'localhost',
+        'PORT': 3306,
     }
 }
 
@@ -139,10 +139,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
